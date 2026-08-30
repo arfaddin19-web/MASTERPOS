@@ -1,0 +1,6 @@
+@MasterPOS.Api_HostAddress = http://localhost:5285
+
+GET {{MasterPOS.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

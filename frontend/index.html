@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MasterPOS</title>
+    <script>
+      // Applied here, before any CSS paints, so a stored light-mode
+      // preference never flashes dark first — see src/theme.ts for the
+      // (identical) logic the in-app toggle uses afterward.
+      try {
+        if (localStorage.getItem('masterpos.theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
