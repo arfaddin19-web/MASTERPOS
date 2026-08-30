@@ -775,6 +775,20 @@ just read for correctness:
   row recorded in the log with no size — proving the failure path writes
   history too, not just the happy path.
 
-`tests/MasterPOS.Tests` is still the project-template scaffold — automated
-tests for these slices are a good next step, but everything above was
-validated by hand against a live database rather than left unverified.
+`tests/MasterPOS.Tests` now automates the manual verification above: 56
+xUnit integration tests running through `WebApplicationFactory<Program>`
+against a real SQL Server database — no mocks, same "real running system"
+standard as the by-hand checks. It covers Setup/Auth, Masters, Sales,
+Purchase, Inventory, Accounting, Workforce/Payroll, Reports, Utility, Roles
+& Users, and Dining Tables/Discount Offers. Because every test shares one
+company database, report-endpoint assertions use before/after deltas from a
+known transaction rather than absolute totals, and test data uses unique
+generated names to avoid collisions. Run it with:
+
+```bash
+cd tests/MasterPOS.Tests
+dotnet test
+```
+
+against a `ConnectionStrings__Default` (or `MASTERPOS_TEST_CONNECTION_STRING`)
+pointing at a real, empty-or-migratable SQL Server instance.
