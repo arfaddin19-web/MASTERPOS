@@ -3,3 +3,7 @@ obj/
 *.user
 .vs/
 appsettings.Local.json
+
+# The built frontend, copied here by installer/publish.ps1 right before
+# `dotnet publish` — regenerated every release, never source.
+src/MasterPOS.Api/wwwroot/

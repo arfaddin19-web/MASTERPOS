@@ -12,10 +12,13 @@ validated against a real SQL Server instance (see **How this was verified**).
 
 ## Architecture
 
-Four projects, each depending only on the one to its left:
+Five projects. Four depend only on the one to their left; `Migrator` is a
+sibling of `Api` sharing `Infrastructure`:
 
 ```
 Domain  ←  Infrastructure  ←  Application  ←  Api
+                    ↑
+                Migrator
 ```
 
 - **`MasterPOS.Domain`** — plain C# entity classes (POCOs) and enums. No EF
@@ -40,7 +43,15 @@ Domain  ←  Infrastructure  ←  Application  ←  Api
 
 - **`MasterPOS.Api`** — ASP.NET Core Web API. Thin controllers that call
   into Application services and translate `AppException` into a 4xx
-  response. `Program.cs` wires up EF Core, JWT auth, and Swagger.
+  response. `Program.cs` wires up EF Core, JWT auth, Swagger, Windows
+  Service hosting, and — on a packaged install — serving the built frontend
+  from the same process (see `../installer/README.md`).
+
+- **`MasterPOS.Migrator`** — a small console app with one job: apply
+  pending EF Core migrations against a connection string given on the
+  command line. Exists so a packaged install can create/update its schema
+  without the `dotnet-ef` CLI tool, which isn't part of a normal .NET
+  install — `../installer/MasterPOS.iss` runs it once per install/upgrade.
 
 ## The reference vertical slices: Auth + Setup, Masters, Sales, Purchase, Inventory, Workforce, Accounting, Reports, and Utility
 
@@ -502,6 +513,16 @@ support simple (SQL Server was chosen specifically for this — see
 design, which is ready to support multiple companies per database if this
 ever moves to a shared SaaS deployment later, without a schema rewrite —
 today, every install just has exactly one Company row.
+
+`../installer/` turns that into an actual offline installer for a client's
+Windows PC — `MasterPOS-Setup.exe` — that publishes the API and the
+frontend as one self-contained process (no .NET or Node needed on the
+client machine), registers it as a Windows Service (auto-starts, survives
+reboots, no terminal window), applies the database schema via
+`MasterPOS.Migrator`, and opens Windows Firewall for other till/terminal
+PCs on the same shop network to reach it. See `../installer/README.md` for
+how to build it and — critically — how to test it on your own PC before a
+client ever sees it.
 
 ## Running locally
 

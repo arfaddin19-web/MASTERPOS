@@ -19,6 +19,23 @@ JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Lets `sc.exe create` register this exe as a real Windows Service on a
+// packaged client install (installer\MasterPOS.iss does that registration —
+// this just makes the app speak the Windows Service Control Manager
+// protocol when it's actually launched as one). A no-op everywhere else —
+// `dotnet run`, the test suite, Docker — so safe to call unconditionally.
+builder.Host.UseWindowsService(options => options.ServiceName = "MasterPOS");
+
+// installer\MasterPOS.iss writes the per-client connection string, JWT
+// signing key, and backup directory here at install time — appsettings.json
+// itself stays a committed placeholder (see its own _comment_* keys). Added
+// after CreateBuilder's own default chain, so this is the highest-priority
+// source of all (beats appsettings.{Environment}.json *and* env vars) —
+// deliberately: it's the one file an on-site install is meant to hold the
+// real answer in, so an admin edits it directly rather than an env var
+// quietly overriding what it says.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false);
+
 // Local-server-per-client model: the connection string comes from
 // appsettings (per-install, edited during on-site setup) or an env var —
 // never hardcoded, since every client's SQL Server instance differs.
@@ -92,10 +109,31 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// No HTTPS redirection: every install runs on the client's own local
+// network with no public exposure and no internet-issued certificate to
+// redirect to (see README "Deployment model") — the same reasoning that
+// already put auth on a bearer JWT instead of a cookie.
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// A packaged install (installer\publish.ps1) copies the built frontend
+// (frontend/dist) into wwwroot before publishing, so this one process
+// serves both the API and the UI on one port — the client opens a single
+// URL, nothing else to run. In dev (`npm run dev`) wwwroot doesn't exist —
+// Vite serves the frontend separately instead — so this is skipped rather
+// than erroring on a missing directory. The fallback pattern excludes
+// "api/*" explicitly — MapFallbackToFile alone only catches requests
+// MapControllers didn't already match, which includes a *mistyped* /api/...
+// path (there's no controller route for it either); without the exclusion
+// that would silently return index.html instead of a real 404.
+var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+if (Directory.Exists(webRootPath))
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+    app.MapFallbackToFile("{*path:regex(^(?!api/).*$)}", "index.html");
+}
 
 app.Run();
 
