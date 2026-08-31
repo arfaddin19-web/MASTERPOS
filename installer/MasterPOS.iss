@@ -175,9 +175,12 @@ Filename: "{sys}\sc.exe"; Parameters: "start {#MyServiceName}"; Flags: runhidden
 Filename: "{#MyAppURL}"; Description: "Launch MasterPOS in your browser"; Flags: postinstall shellexec skipifsilent
 
 [UninstallRun]
-Filename: "{sys}\sc.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden
-Filename: "{sys}\sc.exe"; Parameters: "delete {#MyServiceName}"; Flags: runhidden
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""MasterPOS"""; Flags: runhidden
+; RunOnceId marks each of these done after the first successful
+; uninstall run, so retrying a failed/interrupted uninstall doesn't
+; re-stop/re-delete an already-gone service or firewall rule.
+Filename: "{sys}\sc.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden; RunOnceId: "StopService"
+Filename: "{sys}\sc.exe"; Parameters: "delete {#MyServiceName}"; Flags: runhidden; RunOnceId: "DeleteService"
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""MasterPOS"""; Flags: runhidden; RunOnceId: "DeleteFirewallRule"
 
 [UninstallDelete]
 ; appsettings.Local.json and Backups aren't in [Files] (they're generated,
