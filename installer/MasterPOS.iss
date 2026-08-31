@@ -83,15 +83,25 @@ end;
 // A fresh, random per-install JWT signing key — never the placeholder that
 // ships in the committed appsettings.json, and never shared across clients.
 function GenerateSigningKey(): String;
+// Inno Setup's Pascal Script exposes Random() but not Randomize() — and
+// it's undocumented whether Random self-seeds across separate installer
+// runs, so this doesn't depend on it at all. A small linear congruential
+// generator seeded from GetTickCount (real elapsed-ms-since-boot, so it
+// differs on every run) is self-contained and avoids that uncertainty.
 var
   Chars: String;
   I: Integer;
   S: String;
+  Seed: Int64;
 begin
   Chars := 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  Seed := GetTickCount + 104729; // mixed with a prime so a near-zero tick count still spreads out
   S := '';
   for I := 1 to 64 do
-    S := S + Chars[Random(Length(Chars)) + 1];
+  begin
+    Seed := (Seed * 48271 + I) mod 2147483647;
+    S := S + Chars[(Seed mod Length(Chars)) + 1];
+  end;
   Result := S;
 end;
 
@@ -132,7 +142,6 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then
   begin
-    Randomize;
     SigningKey := GenerateSigningKey();
     ForceDirectories(ExpandConstant('{app}'));
     WriteLocalConfig();
