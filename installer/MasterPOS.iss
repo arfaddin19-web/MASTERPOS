@@ -171,6 +171,14 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""M
 
 Filename: "{sys}\sc.exe"; Parameters: "start {#MyServiceName}"; Flags: runhidden; StatusMsg: "Starting MasterPOS..."
 
+; `sc start` returns once Windows reports the service as running, but the
+; very first browser request right after that can still beat it to actually
+; accepting connections (confirmed live: the service, port, and static
+; files were all completely healthy moments later — this is purely a
+; startup race, not a real bug). `ping -n 3 127.0.0.1` is the standard
+; installer trick for a ~2 second pause without needing PowerShell.
+Filename: "{sys}\ping.exe"; Parameters: "-n 3 127.0.0.1"; Flags: runhidden waituntilterminated
+
 ; Offered on the Finish page, unchecked by default in silent installs.
 Filename: "{#MyAppURL}"; Description: "Launch MasterPOS in your browser"; Flags: postinstall shellexec skipifsilent
 
