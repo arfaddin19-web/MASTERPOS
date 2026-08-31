@@ -81,27 +81,25 @@ begin
 end;
 
 // A fresh, random per-install JWT signing key — never the placeholder that
-// ships in the committed appsettings.json, and never shared across clients.
+// ships in the committed appsettings.json, and never shared across
+// clients. Deliberately the plainest version of this: Random() is a real
+// Inno Setup Pascal Script support function (Randomize and GetTickCount
+// are not — both were tried here and both failed to compile, since
+// Randomize doesn't exist in Pascal Script and GetTickCount is a raw Win32
+// API call that needs an `external` DLL import, not a plain identifier).
+// Setup's own engine seeds Random on its own, which is why installer
+// scripts everywhere use exactly this pattern without ever calling
+// Randomize themselves.
 function GenerateSigningKey(): String;
-// Inno Setup's Pascal Script exposes Random() but not Randomize() — and
-// it's undocumented whether Random self-seeds across separate installer
-// runs, so this doesn't depend on it at all. A small linear congruential
-// generator seeded from GetTickCount (real elapsed-ms-since-boot, so it
-// differs on every run) is self-contained and avoids that uncertainty.
 var
   Chars: String;
   I: Integer;
   S: String;
-  Seed: Int64;
 begin
   Chars := 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  Seed := GetTickCount + 104729; // mixed with a prime so a near-zero tick count still spreads out
   S := '';
   for I := 1 to 64 do
-  begin
-    Seed := (Seed * 48271 + I) mod 2147483647;
-    S := S + Chars[(Seed mod Length(Chars)) + 1];
-  end;
+    S := S + Chars[Random(Length(Chars)) + 1];
   Result := S;
 end;
 
