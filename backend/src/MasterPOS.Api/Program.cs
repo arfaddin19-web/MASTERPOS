@@ -109,6 +109,37 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// A packaged install (installer\publish.ps1) copies the built frontend
+// (frontend/dist) into wwwroot before publishing, so this one process
+// serves both the API and the UI on one port — the client opens a single
+// URL, nothing else to run. In dev (`npm run dev`) wwwroot doesn't exist —
+// Vite serves the frontend separately instead — so this is skipped rather
+// than erroring on a missing directory.
+//
+// UseDefaultFiles/UseStaticFiles run first, as plain (non-endpoint-routing)
+// middleware, so a real static file — a JS chunk, a CSS file, an icon —
+// gets served immediately and nothing after this point ever sees that
+// request. This isn't just style: without an explicit UseRouting() call,
+// ASP.NET Core's minimal-hosting model inserts routing/endpoint-execution
+// at a position that (confirmed live, twice, moving UseStaticFiles around
+// didn't change it) put it BEFORE static files regardless of where
+// UseStaticFiles appeared in source — every non-API request, including a
+// request for a real, existing .js file, fell through to the SPA fallback
+// and got served index.html with a text/html content type, which browsers
+// correctly refuse to execute as a JS module ("Failed to load module
+// script"). Calling UseRouting() explicitly, at this exact point, removes
+// that ambiguity — everything before it is plain middleware that always
+// runs in source order, full stop.
+var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+var servesFrontend = Directory.Exists(webRootPath);
+if (servesFrontend)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
+app.UseRouting();
+
 // No HTTPS redirection: every install runs on the client's own local
 // network with no public exposure and no internet-issued certificate to
 // redirect to (see README "Deployment model") — the same reasoning that
@@ -117,21 +148,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// A packaged install (installer\publish.ps1) copies the built frontend
-// (frontend/dist) into wwwroot before publishing, so this one process
-// serves both the API and the UI on one port — the client opens a single
-// URL, nothing else to run. In dev (`npm run dev`) wwwroot doesn't exist —
-// Vite serves the frontend separately instead — so this is skipped rather
-// than erroring on a missing directory. The fallback pattern excludes
-// "api/*" explicitly — MapFallbackToFile alone only catches requests
-// MapControllers didn't already match, which includes a *mistyped* /api/...
-// path (there's no controller route for it either); without the exclusion
-// that would silently return index.html instead of a real 404.
-var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
-if (Directory.Exists(webRootPath))
+// Only requests that are neither a real static file above nor a real
+// controller route land here — SPA client-side routes like /masters on a
+// reload. Excludes "api/*" explicitly so a *mistyped* API path still 404s
+// instead of silently getting index.html back.
+if (servesFrontend)
 {
-    app.UseDefaultFiles();
-    app.UseStaticFiles();
     app.MapFallbackToFile("{*path:regex(^(?!api/).*$)}", "index.html");
 }
 
