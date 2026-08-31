@@ -17,7 +17,20 @@ using Microsoft.OpenApi.Models;
 // claims exactly as issued on both sides.
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
-var builder = WebApplication.CreateBuilder(args);
+// Explicit ContentRootPath, not the default Directory.GetCurrentDirectory():
+// running the exe directly from a prompt cd'd into its own folder works
+// fine either way, but Windows' Service Control Manager starts a service
+// with its working directory set to C:\Windows\System32 — with the
+// default, the app would look for appsettings.Local.json and wwwroot
+// there and find neither, which is exactly what made this work standalone
+// but not as the installed service. AppContext.BaseDirectory is always the
+// directory the running assembly actually lives in, regardless of how the
+// process was launched.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory,
+});
 
 // Lets `sc.exe create` register this exe as a real Windows Service on a
 // packaged client install (installer\MasterPOS.iss does that registration —
