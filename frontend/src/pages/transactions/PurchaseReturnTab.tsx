@@ -115,7 +115,7 @@ export function PurchaseReturnTab() {
         </button>
       </div>
 
-      <div className="split">
+      <div className="split split-wide">
         <div className="list-card">
           <table>
             <thead>

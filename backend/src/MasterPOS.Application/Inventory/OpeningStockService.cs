@@ -59,6 +59,20 @@ public class OpeningStockService : IOpeningStockService
             ReferenceId = opening.Id,
             CreatedByUserId = _currentUser.UserId,
         });
+
+        // StockLedgerEntries has no cost column of its own (see its own
+        // schema comment) — stock valuation prices every unit at the
+        // product's own PurchasePrice. Without this, a product entered with
+        // no purchase price of its own (the common case — the opening-stock
+        // screen is often the very first place a real cost ever gets typed
+        // for a product) would value its own opening stock at zero despite
+        // a real, just-entered unit cost sitting right there on this
+        // request — exactly the report a business owner relies on being
+        // accurate. Only overwrites a zero/unset price, never a
+        // deliberately-priced product's existing number.
+        if (request.UnitCost > 0 && product.PurchasePrice == 0)
+            product.PurchasePrice = request.UnitCost;
+
         await _db.SaveChangesAsync(ct);
 
         return ToDto(await GetOwnedAsync(opening.Id, ct));

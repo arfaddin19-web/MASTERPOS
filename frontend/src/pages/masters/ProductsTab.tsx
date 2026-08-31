@@ -137,6 +137,11 @@ export function ProductsTab() {
     mutationFn: async () => {
       if (!form.name.trim()) throw new Error('Product name is required.');
       if (!form.unitId) throw new Error('Select a unit.');
+      // Captured before setSelectedId below reassigns it — tells onSuccess
+      // whether this run was a create (started from a blank form) so it can
+      // reset back to blank for the next entry, matching how a real
+      // data-entry session adds many products/parties in a row.
+      const wasCreate = !selectedId;
       const payload = {
         name: form.name.trim(),
         productType: form.productType,
@@ -168,10 +173,20 @@ export function ProductsTab() {
         }
         await setProductBom(saved.id, lines);
       }
-      return saved;
+      return { saved, wasCreate };
     },
-    onSuccess: (saved) => {
-      succeed(selectedId ? `${saved.name} updated.` : `${saved.name} created.`);
+    onSuccess: ({ saved, wasCreate }) => {
+      succeed(wasCreate ? `${saved.name} created.` : `${saved.name} updated.`);
+      // A plain create resets straight back to a blank form, ready for the
+      // next product — the natural shape of entering many products in a
+      // row. A Recipe stays selected instead: it may have just been saved
+      // *without* its BOM yet (the branch above throws before returning in
+      // that case, so onSuccess never even runs then), and once it does
+      // have one, staying on it lets you immediately tweak ingredients
+      // without re-selecting it from the list.
+      if (wasCreate && saved.productType !== 'Recipe') {
+        startNew();
+      }
     },
     onError: fail,
   });

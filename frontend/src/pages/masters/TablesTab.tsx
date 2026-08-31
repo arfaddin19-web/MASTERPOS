@@ -29,6 +29,13 @@ export function TablesTab() {
   const tablesQuery = useQuery({ queryKey: ['masters-tables'], queryFn: () => listTables() });
   const selected = (tablesQuery.data ?? []).find((t) => t.id === selectedId) ?? null;
 
+  // Floor isn't its own master table — it's a free-text label on DiningTable
+  // (see DiningTable.cs) — so the "reusable dropdown" is derived here from
+  // whatever floors already exist across this branch's tables, rather than
+  // needing a new backend entity. Sorted for a stable, predictable list as
+  // more floors get added.
+  const knownFloors = [...new Set((tablesQuery.data ?? []).map((t) => t.floorLabel).filter((f): f is string => !!f))].sort();
+
   useEffect(() => {
     if (selected) setForm(toForm(selected));
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -43,15 +50,24 @@ export function TablesTab() {
     mutationFn: async () => {
       if (!form.tableNumber.trim()) throw new Error('Table number is required.');
       const seats = Number(form.seats) || 1;
-      if (selectedId) return updateTable(selectedId, { tableNumber: form.tableNumber.trim(), floorLabel: form.floorLabel.trim() || null, seats });
-      if (!session?.defaultBranchId) throw new Error('No branch on this session.');
-      return createTable({ branchId: session.defaultBranchId, tableNumber: form.tableNumber.trim(), floorLabel: form.floorLabel.trim() || null, seats });
+      // Captured before startNew()/setSelectedId below can touch it.
+      const wasCreate = !selectedId;
+      const saved = selectedId
+        ? await updateTable(selectedId, { tableNumber: form.tableNumber.trim(), floorLabel: form.floorLabel.trim() || null, seats })
+        : await (async () => {
+            if (!session?.defaultBranchId) throw new Error('No branch on this session.');
+            return createTable({ branchId: session.defaultBranchId, tableNumber: form.tableNumber.trim(), floorLabel: form.floorLabel.trim() || null, seats });
+          })();
+      return { saved, wasCreate };
     },
-    onSuccess: (saved) => {
+    onSuccess: ({ saved, wasCreate }) => {
       queryClient.invalidateQueries({ queryKey: ['masters-tables'] });
       queryClient.invalidateQueries({ queryKey: ['tables'] });
-      setSelectedId(saved.id);
-      succeed(selectedId ? `Table ${saved.tableNumber} updated.` : `Table ${saved.tableNumber} created.`);
+      succeed(wasCreate ? `Table ${saved.tableNumber} created.` : `Table ${saved.tableNumber} updated.`);
+      // Reset to blank for the next table instead of switching into Edit
+      // mode — setting up a floor plan means entering many tables in a row.
+      if (wasCreate) startNew();
+      else setSelectedId(saved.id);
     },
     onError: fail,
   });
@@ -133,7 +149,30 @@ export function TablesTab() {
           <div className="frow">
             <div className="field">
               <label>Floor</label>
-              <input className="input" value={form.floorLabel} onChange={(e) => setForm((f) => ({ ...f, floorLabel: e.target.value }))} placeholder="e.g. Ground Floor" />
+              <div className="field-row">
+                <select
+                  className="input"
+                  value={knownFloors.includes(form.floorLabel) ? form.floorLabel : ''}
+                  onChange={(e) => setForm((f) => ({ ...f, floorLabel: e.target.value }))}
+                >
+                  <option value="">{form.floorLabel && !knownFloors.includes(form.floorLabel) ? form.floorLabel : '—'}</option>
+                  {knownFloors.map((floor) => (
+                    <option key={floor} value={floor}>
+                      {floor}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="quick-add"
+                  title="Add a new floor name"
+                  onClick={() => {
+                    const name = window.prompt('New floor name (e.g. Ground Floor, Rooftop)');
+                    if (name?.trim()) setForm((f) => ({ ...f, floorLabel: name.trim() }));
+                  }}
+                >
+                  +
+                </button>
+              </div>
             </div>
             <div className="field">
               <label>Seats</label>

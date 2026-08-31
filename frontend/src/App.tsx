@@ -34,13 +34,13 @@ export default function App() {
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
-      <Route path="/pos" element={<RequireAuth><PosPage /></RequireAuth>} />
-      <Route path="/masters" element={<RequireAuth><MastersPage /></RequireAuth>} />
-      <Route path="/inventory" element={<RequireAuth><InventoryPage /></RequireAuth>} />
-      <Route path="/transactions" element={<RequireAuth><TransactionsPage /></RequireAuth>} />
-      <Route path="/reports" element={<RequireAuth><ReportsPage /></RequireAuth>} />
-      <Route path="/workforce" element={<RequireAuth><WorkforcePage /></RequireAuth>} />
-      <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+      <Route path="/pos" element={<RequireAuth module="Billing"><PosPage /></RequireAuth>} />
+      <Route path="/masters" element={<RequireAuth module="Masters"><MastersPage /></RequireAuth>} />
+      <Route path="/inventory" element={<RequireAuth module="Inventory"><InventoryPage /></RequireAuth>} />
+      <Route path="/transactions" element={<RequireAuth module="Transactions"><TransactionsPage /></RequireAuth>} />
+      <Route path="/reports" element={<RequireAuth module="Reports"><ReportsPage /></RequireAuth>} />
+      <Route path="/workforce" element={<RequireAuth module="Workforce"><WorkforcePage /></RequireAuth>} />
+      <Route path="/settings" element={<RequireAuth module="Settings"><SettingsPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -48,6 +48,11 @@ export function PartiesTab() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.name.trim()) throw new Error('Name is required.');
+      // Captured before startNew()/setSelectedId below can touch it —
+      // tells onSuccess whether this run was a create, so it can reset
+      // back to blank for the next entry instead of switching into Edit
+      // mode for the party just created.
+      const wasCreate = !selectedId;
       const payload: UpsertPartyRequest = {
         ...form,
         name: form.name.trim(),
@@ -57,12 +62,17 @@ export function PartiesTab() {
         vatOrPanNumber: form.vatOrPanNumber?.trim() || null,
         openingBalanceAmount: Number(form.openingBalanceAmount) || 0,
       };
-      return selectedId ? updateParty(selectedId, payload) : createParty(payload);
+      const saved = selectedId ? await updateParty(selectedId, payload) : await createParty(payload);
+      return { saved, wasCreate };
     },
-    onSuccess: (saved) => {
+    onSuccess: ({ saved, wasCreate }) => {
       queryClient.invalidateQueries({ queryKey: ['parties'] });
-      setSelectedId(saved.id);
-      succeed(selectedId ? `${saved.name} updated.` : `${saved.name} created.`);
+      succeed(wasCreate ? `${saved.name} created.` : `${saved.name} updated.`);
+      if (wasCreate) {
+        startNew();
+      } else {
+        setSelectedId(saved.id);
+      }
     },
     onError: fail,
   });

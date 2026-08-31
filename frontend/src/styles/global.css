@@ -238,6 +238,14 @@ td { padding: 11px 12px; font-size: 13px; color: var(--text-dim); border-top: 1p
 /* ---- Masters ---- */
 .toolbar { display: flex; align-items: center; justify-content: space-between; flex: none; flex-wrap: wrap; gap: 10px; }
 .split { flex: 1; display: grid; grid-template-columns: 1.5fr 420px; gap: 18px; min-height: 0; align-items: start; }
+/* Purchase Invoice / Purchase Return: their line-items table has 8 columns
+   (Item, Unit, Qty, Rate, Disc%, VAT%, Amount, remove) — 420px forces most
+   of that behind a horizontal scrollbar, including the Add button itself
+   (only 8px tall, low-contrast against the dark background — easy to miss
+   entirely, which is exactly what made this screen look like it had no way
+   to add line items at all). A wider right column keeps every field, and
+   the button that actually adds a line, in view without scrolling. */
+.split-wide { grid-template-columns: 1fr 700px; }
 .list-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 14px; padding: 18px; overflow: auto; max-height: 100%; }
 .list-card tr.row-clickable { cursor: pointer; }
 .list-card tr.row-clickable:hover td { color: var(--text); }
@@ -288,6 +296,14 @@ td { padding: 11px 12px; font-size: 13px; color: var(--text-dim); border-top: 1p
 .header-grid .field { margin-bottom: 0; }
 .mini-input { padding: 7px 9px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 12px; width: 70px; text-align: right; }
 .doc-lines-table input.mini-input { width: 100%; }
+/* The generic `table { width: 100% }` rule otherwise squeezes this 8-column
+   table down to fit its narrow form-panel container instead of ever
+   overflowing — with no min-width, there's nothing for .scroll-x's
+   overflow-x:auto to actually trigger on, so columns just collapse into
+   unreadable slivers (an item name wrapping onto 3 lines, "Rs. 113.00"
+   truncated to "11", the Add button cut down to "A"). A min-width forces a
+   real horizontal scrollbar instead once the panel is narrower than this. */
+.doc-lines-table { min-width: 640px; }
 
 /* ---- Reports ---- */
 .rcats { width: 230px; flex: none; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 14px; padding: 14px; overflow: auto; display: flex; flex-direction: column; gap: 6px; }

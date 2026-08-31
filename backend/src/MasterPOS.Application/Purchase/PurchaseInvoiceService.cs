@@ -157,6 +157,15 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
                 ReferenceId = invoice.Id,
                 CreatedByUserId = _currentUser.UserId,
             });
+
+            // Same reasoning as OpeningStockService: stock valuation prices
+            // every unit at the product's own PurchasePrice, and this line's
+            // Rate is often the first real cost ever entered for a product
+            // that was created with none. Only fills in a zero/unset price —
+            // never overwrites a price someone deliberately set, on this or
+            // any later purchase.
+            if (line.Rate > 0 && line.Product.PurchasePrice == 0)
+                line.Product.PurchasePrice = line.Rate;
         }
 
         invoice.Status = DocumentStatus.Posted;

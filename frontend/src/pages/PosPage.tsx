@@ -154,6 +154,11 @@ export function PosPage() {
     onSuccess: () => {
       setBanner({ kind: 'success', text: 'Order put on hold.' });
       setCurrentOrderId(null);
+      // Without this, the table dropdown kept showing whichever table this
+      // held order was for — tapping a product right after would silently
+      // start a *second* order for that same table instead of the fresh
+      // table selection a server actually needs to move on to the next one.
+      setTableId(null);
       queryClient.invalidateQueries({ queryKey: ['open-orders'] });
     },
     onError: fail,
@@ -164,6 +169,7 @@ export function PosPage() {
     onSuccess: () => {
       setBanner({ kind: 'success', text: 'Order cancelled.' });
       setCurrentOrderId(null);
+      setTableId(null);
       queryClient.invalidateQueries({ queryKey: ['open-orders'] });
     },
     onError: fail,
@@ -265,7 +271,9 @@ export function PosPage() {
                           }}
                         >
                           <span>
-                            #{o.orderNumber} <span className="badge badge-gold">{o.status}</span>
+                            #{o.orderNumber}
+                            {o.tableNumber ? ` · Table ${o.tableNumber}` : ` · ${o.orderType}`}{' '}
+                            <span className="badge badge-gold">{o.status}</span>
                           </span>
                           <span className="tabular">{formatRs(o.grandTotalAmount)}</span>
                         </button>

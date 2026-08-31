@@ -17,20 +17,26 @@ interface NavItem {
   to: string;
   label: string;
   icon: (props: { className?: string }) => ReactNode;
+  // The backend's PermissionModule this nav destination belongs to (see
+  // MasterPOS.Domain.Common.Enums.cs) — omitted for Dashboard, which is
+  // just a summary view every authenticated user can see regardless of
+  // role. Every other module is real data entry, so it's gated on that
+  // role actually having canView for it.
+  module?: string;
 }
 
 const primaryNav: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-  { to: '/pos', label: 'Billing (POS)', icon: BillingIcon },
-  { to: '/masters', label: 'Masters', icon: MastersIcon },
-  { to: '/inventory', label: 'Inventory', icon: InventoryIcon },
-  { to: '/transactions', label: 'Transactions', icon: TransactionsIcon },
-  { to: '/reports', label: 'Reports', icon: ReportsIcon },
+  { to: '/pos', label: 'Billing (POS)', icon: BillingIcon, module: 'Billing' },
+  { to: '/masters', label: 'Masters', icon: MastersIcon, module: 'Masters' },
+  { to: '/inventory', label: 'Inventory', icon: InventoryIcon, module: 'Inventory' },
+  { to: '/transactions', label: 'Transactions', icon: TransactionsIcon, module: 'Transactions' },
+  { to: '/reports', label: 'Reports', icon: ReportsIcon, module: 'Reports' },
 ];
 
 const peopleNav: NavItem[] = [
-  { to: '/workforce', label: 'Workforce', icon: WorkforceIcon },
-  { to: '/settings', label: 'Settings', icon: SettingsIcon },
+  { to: '/workforce', label: 'Workforce', icon: WorkforceIcon, module: 'Workforce' },
+  { to: '/settings', label: 'Settings', icon: SettingsIcon, module: 'Settings' },
 ];
 
 function initials(name: string) {
@@ -41,7 +47,14 @@ function initials(name: string) {
 /** The Main.dc.html shell: sidebar nav + a topbar/content area supplied by
  * whichever route is active. Every authenticated page renders inside this. */
 export function AppShell({ title, subtitle, topbarExtra, children }: { title: string; subtitle?: string; topbarExtra?: ReactNode; children: ReactNode }) {
-  const { session, logout } = useAuth();
+  const { session, logout, hasPermission } = useAuth();
+
+  // A role with canView off for a module shouldn't see it offered in the
+  // sidebar at all — previously every nav item rendered unconditionally
+  // regardless of the logged-in role's actual permissions, which is what
+  // made every restricted role look identical to Admin in the UI.
+  const visiblePrimaryNav = primaryNav.filter((item) => !item.module || hasPermission(item.module, 'canView'));
+  const visiblePeopleNav = peopleNav.filter((item) => !item.module || hasPermission(item.module, 'canView'));
 
   return (
     <div className="app">
@@ -55,14 +68,14 @@ export function AppShell({ title, subtitle, topbarExtra, children }: { title: st
         </div>
 
         <nav className="nav">
-          {primaryNav.map(({ to, label, icon: Icon }) => (
+          {visiblePrimaryNav.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
               <Icon />
               {label}
             </NavLink>
           ))}
-          <div className="nav-section-label">People</div>
-          {peopleNav.map(({ to, label, icon: Icon }) => (
+          {visiblePeopleNav.length > 0 && <div className="nav-section-label">People</div>}
+          {visiblePeopleNav.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
               <Icon />
               {label}

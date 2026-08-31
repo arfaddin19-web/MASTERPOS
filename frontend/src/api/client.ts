@@ -53,7 +53,13 @@ export interface ApiErrorBody {
 
 /** Pulls the backend's own error message out of an axios error, falling back
  * to something generic — every controller in the backend maps AppException
- * to `{ message }`, so this is almost always what the user should see. */
+ * to `{ message }`, so this is almost always what the user should see.
+ * Mutation `mutationFn`s across the app also throw plain client-side
+ * `Error`s for validation done before ever calling the API ("Select a
+ * table first.", "Product name is required.", …) — those aren't axios
+ * errors, so they need their own branch or every one of those messages
+ * gets thrown away in favor of the generic fallback, right when the user
+ * most needs the specific guidance. */
 export function apiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const body = err.response?.data as ApiErrorBody | undefined;
@@ -62,5 +68,6 @@ export function apiErrorMessage(err: unknown): string {
     if (err.response?.status === 401) return 'Your session has expired — please sign in again.';
     if (err.message) return err.message;
   }
+  if (err instanceof Error && err.message) return err.message;
   return 'Something went wrong. Please try again.';
 }
